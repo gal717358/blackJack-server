@@ -66,7 +66,7 @@ const calculateTotal = (cards) => {
       total += parseInt(card.value);
     }
   });
-  while (total > 21 && numOfAces > 0) {
+  if (total > 21 && numOfAces > 0) {
     total -= 10;
     numOfAces -= 1;
   }
