@@ -3,57 +3,92 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 
-// Helper function to generate a random card value (1-10)
-const generateCardValue = () => Math.floor(Math.random() * 10 + 1);
+const port = 3001;
 
-// Helper function to calculate the total hand value
-const calculateHandValue = (hand) => hand.reduce((acc, card) => acc + card, 0);
-
-// Route to start a new game
-app.get('/new-game', (req, res) => {
-  const playerHand = [generateCardValue(), generateCardValue()];
-  const dealerHand = [generateCardValue(), generateCardValue()];
-  const playerTotal = calculateHandValue(playerHand);
-  const dealerTotal = calculateHandValue(dealerHand);
-
-  // Send back the player's hand and one card from the dealer's hand
-  res.json({
-    playerHand,
-    dealerHand: [dealerHand[0]],
-    playerTotal,
-    dealerTotal,
+function generateDeck() {
+  const suits = ['clubs', 'diamonds', 'hearts', 'spades'];
+  const values = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  const colors = {
+    clubs: 'black',
+    diamonds: 'red',
+    hearts: 'red',
+    spades: 'black',
+  };
+  const deck = [];
+  suits.forEach((suit) => {
+    values.forEach((value) => {
+      const card = { suit, value, color: colors[suit] };
+      deck.push(card);
+    });
   });
-});
+  return deck;
+}
 
-// Route to hit (draw another card)
-app.get('/hit', (req, res) => {
-  const newCard = generateCardValue();
-  const playerTotal = calculateHandValue([...req.query.playerHand, newCard]);
+let playerCards = [];
+let dealerCards = [];
+let playerTotal = 0;
+let dealerTotal = 0;
 
-  // Send back the new hand and the updated total
-  res.json({
-    playerHand: [...req.query.playerHand, newCard],
-    playerTotal,
-  });
-});
+const startGame = () => {
+  playerCards = [getRandomCard(), getRandomCard()];
+  dealerCards = [getRandomCard(), getRandomCard()];
+  playerTotal = calculateTotal(playerCards);
+  dealerTotal = calculateTotal(dealerCards);
+};
 
-// Route to play the dealer's turn
-app.get('/play-dealer', (req, res) => {
-  let dealerHand = [...req.query.dealerHand, generateCardValue()];
-  let dealerTotal = calculateHandValue(dealerHand);
+const hit = () => {
+  playerCards.push(getRandomCard());
+  playerTotal = calculateTotal(playerCards);
+};
 
-  // Keep hitting until the dealer's total is 17 or higher
+const stay = () => {
   while (dealerTotal < 17) {
-    dealerHand = [...dealerHand, generateCardValue()];
-    dealerTotal = calculateHandValue(dealerHand);
+    dealerCards.push(getRandomCard());
+    dealerTotal = calculateTotal(dealerCards);
+  }
+};
+
+const getRandomCard = () => {
+  const cards = generateDeck();
+  return cards[Math.floor(Math.random() * cards.length)];
+};
+
+const calculateTotal = (cards) => {
+  let total = 0;
+  let numOfAces = 0;
+  cards.forEach((card) => {
+    if (card.value === 'J' || card.value === 'Q' || card.value === 'K') {
+      total += 10;
+    } else if (card.value === 'A') {
+      total += 11;
+      numOfAces += 1;
+    } else {
+      total += parseInt(card.value);
+    }
+  });
+  while (total > 21 && numOfAces > 0) {
+    total -= 10;
+    numOfAces -= 1;
   }
 
-  // Send back the final dealer hand and total
-  res.json({
-    dealerHand,
-    dealerTotal,
-  });
+  return total;
+};
+
+app.get('/start', (req, res) => {
+  startGame();
+  res.json({ playerCards, dealerCards, playerTotal, dealerTotal });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get('/hit', (req, res) => {
+  hit();
+  res.json({ playerCards, playerTotal });
+});
+
+app.get('/stay', (req, res) => {
+  stay();
+  res.json({ dealerCards, dealerTotal, playerTotal });
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
