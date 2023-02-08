@@ -42,7 +42,7 @@ const hit = () => {
 };
 
 const stay = () => {
-  while (dealerTotal < 17) {
+  if (dealerTotal < 17) {
     dealerCards.push(getRandomCard());
     dealerTotal = calculateTotal(dealerCards);
   }
